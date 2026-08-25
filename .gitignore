@@ -32,6 +32,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local dev volumes
+/.data
+
+# real customer/lead data and personal images — never belong in the repo
+*.xlsx
+Screenshot*.png
+WhatsApp Image*.jpeg
 
 # vercel
 .vercel
@@ -39,3 +48,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# stray debug scripts from ad-hoc testing
+verify-*.mjs

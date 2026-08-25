@@ -1,0 +1,3 @@
+ALTER TYPE "public"."notification_type" ADD VALUE 'chat_mention';--> statement-breakpoint
+ALTER TABLE "notifications" ADD COLUMN "chat_conversation_id" uuid;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_chat_conversation_id_chat_conversations_id_fk" FOREIGN KEY ("chat_conversation_id") REFERENCES "public"."chat_conversations"("id") ON DELETE cascade ON UPDATE no action;

@@ -1,26 +1,341 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-magenta: var(--brand-magenta);
+  --color-temp-on-fire: var(--temp-on-fire);
+  --color-temp-hot: var(--temp-hot);
+  --color-temp-warm: var(--temp-warm);
+  --color-temp-cold: var(--temp-cold);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * Brand tokens — the cyan -> violet -> magenta brand spectrum, applied as a
+ * full design system (see DESIGN.md). Violet is primary and does the everyday
+ * work; magenta is the accent for urgency/emphasis; cyan is the cool
+ * counterweight. The gradient itself is a signature, not a wallpaper — it is
+ * allowed on the logo mark, the login art panel, the active nav rail, one hero
+ * surface per page, and progress fills. Nowhere else.
+ *
+ * Light and dark are peers: every color is defined here on bare :root first,
+ * then overridden in .dark. No color may have its only definition inside a
+ * theme block. Per-client forks override these values (or better, source them
+ * from `organizations.branding_config` at runtime) rather than editing
+ * component code — see lib/config/branding.ts.
+ */
+:root {
+  /* --font-sans / --font-display are set on <html> by layout.tsx */
+
+  /* Raw brand stops — referenced by the gradient and by chart series. */
+  --brand-cyan: oklch(0.84 0.14 195);
+  --brand-violet: oklch(0.58 0.21 285);
+  --brand-magenta: oklch(0.6 0.29 320);
+
+  --brand-gradient: linear-gradient(
+    100deg,
+    var(--brand-cyan) 0%,
+    var(--brand-violet) 52%,
+    var(--brand-magenta) 100%
+  );
+  --brand-gradient-soft: linear-gradient(
+    100deg,
+    color-mix(in oklch, var(--brand-cyan) 14%, transparent) 0%,
+    color-mix(in oklch, var(--brand-violet) 14%, transparent) 52%,
+    color-mix(in oklch, var(--brand-magenta) 14%, transparent) 100%
+  );
+
+  /* Canvas sits a hair off-white, cooled toward violet, so white cards lift. */
+  --background: oklch(0.985 0.003 280);
+  --foreground: oklch(0.2 0.02 285);
+
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+
+  /* Primary = brand violet — active nav, primary buttons, focus rings, links */
+  --primary: var(--brand-violet);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.96 0.006 285);
+  --secondary-foreground: oklch(0.25 0.02 285);
+
+  --muted: oklch(0.965 0.005 285);
+  --muted-foreground: oklch(0.53 0.02 285);
+
+  /* Accent = brand magenta — urgency and emphasis, never decorative */
+  --accent: var(--brand-magenta);
+  --accent-foreground: oklch(0.99 0 0);
+  --accent-hover: oklch(0.54 0.28 320);
+
+  --destructive: oklch(0.58 0.23 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.65 0.16 165);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.75 0.15 75);
+  --warning-foreground: oklch(0.2 0.02 285);
+
+  --border: oklch(0.92 0.006 285);
+  --input: oklch(0.9 0.008 285);
+  --ring: var(--primary);
+
+  /* Lead-temperature scale, mapped onto the brand spectrum so urgency reads
+     as one family: magenta (hottest) -> violet -> slate (coldest). */
+  --temp-on-fire: var(--brand-magenta);
+  --temp-hot: oklch(0.62 0.24 305);
+  --temp-warm: var(--brand-violet);
+  --temp-cold: oklch(0.6 0.02 285);
+
+  /* Chart series — brand-derived, evenly spaced around the spectrum */
+  --chart-1: var(--brand-violet);
+  --chart-2: var(--brand-magenta);
+  --chart-3: oklch(0.7 0.14 195);
+  --chart-4: oklch(0.68 0.16 165);
+  --chart-5: oklch(0.7 0.15 75);
+
+  --radius: 0.75rem;
+
+  /* Card depth: black-based on light. Overridden to a violet glow on dark. */
+  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 4%);
+  --shadow-card-hover: 0 8px 24px -8px oklch(0 0 0 / 12%);
+  --shadow-overlay: 0 16px 48px -12px oklch(0 0 0 / 18%);
+
+  /* Sidebar: tinted surface, separated from canvas by tone + hairline.
+     Foreground darkened from 0.42 -> 0.32 — inactive nav icons/labels were
+     reading as faint grey against the near-white sidebar. */
+  --sidebar: oklch(0.995 0.002 285);
+  --sidebar-foreground: oklch(0.32 0.02 285);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.955 0.008 285);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: oklch(0.92 0.006 285);
+  --sidebar-ring: var(--primary);
+}
+
+.dark {
+  /* Deep violet-tinted slate, never pure black — cards lift by lightness. */
+  --background: oklch(0.17 0.015 285);
+  --foreground: oklch(0.96 0.005 285);
+
+  --card: oklch(0.21 0.018 285);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(0.23 0.018 285);
+  --popover-foreground: var(--foreground);
+
+  /* Violet lightened so it keeps contrast against the dark canvas */
+  --primary: oklch(0.68 0.19 285);
+  --primary-foreground: oklch(0.16 0.02 285);
+
+  --secondary: oklch(0.26 0.018 285);
+  --secondary-foreground: oklch(0.93 0.006 285);
+
+  --muted: oklch(0.25 0.016 285);
+  --muted-foreground: oklch(0.68 0.015 285);
+
+  --accent: oklch(0.68 0.24 320);
+  --accent-foreground: oklch(0.16 0.02 285);
+  --accent-hover: oklch(0.73 0.24 320);
+
+  --destructive: oklch(0.65 0.21 25);
+  --destructive-foreground: oklch(0.16 0.02 285);
+  --success: oklch(0.72 0.15 165);
+  --success-foreground: oklch(0.16 0.02 285);
+  --warning: oklch(0.8 0.14 75);
+  --warning-foreground: oklch(0.16 0.02 285);
+
+  --border: oklch(0.29 0.012 285);
+  --input: oklch(0.32 0.014 285);
+  --ring: var(--primary);
+
+  --temp-on-fire: oklch(0.68 0.24 320);
+  --temp-hot: oklch(0.68 0.21 305);
+  --temp-warm: oklch(0.68 0.19 285);
+  --temp-cold: oklch(0.66 0.02 285);
+
+  --chart-1: oklch(0.68 0.19 285);
+  --chart-2: oklch(0.68 0.24 320);
+  --chart-3: oklch(0.78 0.13 195);
+  --chart-4: oklch(0.75 0.15 165);
+  --chart-5: oklch(0.78 0.14 75);
+
+  /* Black shadows are invisible on a dark canvas — use a violet-tinted glow
+     plus a light top hairline to read as elevation. */
+  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 30%);
+  --shadow-card-hover: 0 8px 28px -10px oklch(0.58 0.21 285 / 35%);
+  --shadow-overlay: 0 16px 48px -12px oklch(0 0 0 / 55%);
+
+  --sidebar: oklch(0.19 0.016 285);
+  --sidebar-foreground: oklch(0.72 0.015 285);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: oklch(0.16 0.02 285);
+  --sidebar-accent: oklch(0.26 0.018 285);
+  --sidebar-accent-foreground: oklch(0.96 0.005 285);
+  --sidebar-border: oklch(0.29 0.012 285);
+  --sidebar-ring: var(--primary);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+  }
+  html,
+  body {
+    /* Defensive baseline: nothing in this app is meant to overflow
+       horizontally, so a stray absolutely-positioned decorative element (a
+       glow, a background ring) can never surface a page-level horizontal
+       scrollbar even if its own ancestor's overflow-hidden gets bypassed by
+       a browser/zoom/extension quirk. Vertical scrolling is untouched. */
+    overflow-x: hidden;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* Display face for titles and KPI numerals — body copy never switches face. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), var(--font-sans), sans-serif;
+    letter-spacing: -0.015em;
+  }
+  /* Numbers never jitter and columns always align. */
+  th,
+  td {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* App canvas. Flat tinted surface — the gradient belongs to the brand
+     signature surfaces, not the page background. */
+  .app-shell-bg {
+    background-color: var(--background);
+  }
+
+  /*
+   * Shared card depth language: a soft resting shadow that deepens on hover,
+   * with a 1px lift and a border warmed toward primary. Applied via className,
+   * not inline per-component styles, so every card in the app moves the same
+   * way in both themes.
+   */
+  .card-surface {
+    box-shadow: var(--shadow-card);
+    transition:
+      box-shadow 0.2s ease-out,
+      border-color 0.15s ease,
+      transform 0.2s ease-out;
+  }
+  .card-surface:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: color-mix(in oklch, var(--primary) 30%, var(--border));
+    transform: translateY(-1px);
+  }
+
+  /* Interactive row/list-item hover — subtle background wash, no shadow. */
+  .row-hover {
+    transition: background-color 0.12s ease;
+  }
+  .row-hover:hover {
+    background-color: var(--muted);
+  }
+
+  /* Brand signature fills. Use sparingly — at most twice per viewport, and
+     never behind body copy. */
+  .brand-gradient {
+    background-image: var(--brand-gradient);
+  }
+  .brand-gradient-soft {
+    background-image: var(--brand-gradient-soft);
+  }
+  .brand-text-gradient {
+    background-image: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Frosted overlay used by the login art panel's stat/testimonial cards. */
+  .glass-panel {
+    background-color: oklch(1 0 0 / 12%);
+    border: 1px solid oklch(1 0 0 / 20%);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Tabular numerals for KPI values rendered outside tables. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Motion is fast and understated; users who ask for less get color only. */
+@media (prefers-reduced-motion: reduce) {
+  .card-surface,
+  .card-surface:hover {
+    transform: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

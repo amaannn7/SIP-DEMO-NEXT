@@ -1,0 +1,1 @@
+ALTER TYPE "public"."lead_activity_type" ADD VALUE 'call_started' BEFORE 'call_logged';

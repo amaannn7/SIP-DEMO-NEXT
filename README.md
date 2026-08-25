@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sales Intelligence System
 
-## Getting Started
+A multi-user B2B sales intelligence and pipeline CRM: lead management, an
+AI-driven scoring/focus-queue engine, and AI-assisted research/email/call-pitch
+generation. Built as a reusable **base template** — fork it per client (see
+[NEW-CLIENT-SETUP.md](./NEW-CLIENT-SETUP.md)) rather than running one shared
+multi-tenant deployment.
 
-First, run the development server:
+This repo replaces an earlier PHP/vanilla-JS/shared-hosting version of the
+same product. In short: the old stack couldn't scale past a handful of users,
+stored everything as JSON blobs in Postgres instead of a real relational
+schema, ran LLM calls synchronously (5–30s blocking requests), and depended
+on a third-party realtime service (Pusher) purely because shared hosting
+couldn't run a persistent process.
+
+## Stack
+
+- **Next.js 15** (App Router) + **TypeScript** (strict)
+- **PostgreSQL** via **Drizzle ORM** — a real relational schema, not a KV store
+- **Custom session-based auth** (httpOnly cookies, server-side sessions) — supports admin impersonation as a first-class, audited feature
+- **pg-boss** for background jobs (runs inside Postgres — no separate Redis service)
+- **Tailwind CSS v4 + shadcn/ui (Radix)** — fully custom, config-driven design system
+- **Docker Compose** deployment: `app`, `worker`, `postgres`, `minio`, `caddy` (auto-HTTPS)
+
+## Local development
+
+Requires Docker (for Postgres/MinIO) or a local Postgres instance.
 
 ```bash
+cp .env.example .env
+# fill in .env — see comments in the file
+
+npm install
+npm run db:migrate
+npm run seed:demo   # generic showcase demo data, for local dev / sales demos
+# or: npm run seed:client   # minimal org + admin, for a real deployment
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Demo login (after `seed:demo`), all with password `demo1234`:
+`superadmin@salesintel.demo`, `admin@salesintel.demo`, `rep@salesintel.demo`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Start the Next.js dev server |
+| `npm run build` / `npm run start` | Production build / start |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest |
+| `npm run db:generate` | Generate a Drizzle migration from `src/lib/db/schema.ts` |
+| `npm run db:migrate` | Apply pending migrations |
+| `npm run db:studio` | Drizzle Studio (DB browser) |
+| `npm run seed:demo` | Seed generic showcase demo data (dev/showcase only) |
+| `npm run seed:client` | Seed a minimal org + super-admin (real deployments) |
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
+See [NEW-CLIENT-SETUP.md](./NEW-CLIENT-SETUP.md) for the full per-client
+deployment checklist. Short version: `docker compose up -d --build` on a VPS
+with `.env` configured builds the app, runs migrations, and starts everything
+behind Caddy with automatic TLS.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  app/
+    (auth)/            # login, session Server Actions
+    (dashboard)/        # authenticated shell — sidebar, dashboard, leads, etc.
+  components/
+    ui/                 # shadcn/ui primitives
+    layout/              # sidebar, topbar
+    dashboard/, leads/   # domain components
+  lib/
+    db/                  # Drizzle schema, client, seed scripts
+    auth/                # sessions, password hashing, impersonation
+    config/              # branding/theme config loader
+    validation/          # Zod schemas
+```
 
-## Deploy on Vercel
+## Status
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Phase 0 complete**: scaffold, auth (with impersonation), design system,
+dashboard shell with realistic demo data. Leads CRUD, the scoring engine,
+AI features, and admin/reports land in subsequent phases. Chat, Aircall
+calling, and support tickets are intentionally out of scope for this build.

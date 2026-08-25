@@ -1,0 +1,1 @@
+ALTER TYPE "public"."lead_activity_type" ADD VALUE 'email_sent' BEFORE 'call_pitch_generated';

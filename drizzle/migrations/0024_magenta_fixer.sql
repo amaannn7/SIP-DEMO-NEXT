@@ -1,0 +1,1 @@
+ALTER TABLE "enrichment_results" ADD COLUMN "research_factors" jsonb DEFAULT '[]'::jsonb NOT NULL;

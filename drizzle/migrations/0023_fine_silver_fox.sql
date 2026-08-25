@@ -1,0 +1,2 @@
+CREATE TYPE "public"."next_action" AS ENUM('followup_email', 'followup_date', 'consultation_booked', 'nurture_parked');--> statement-breakpoint
+ALTER TABLE "call_logs" ADD COLUMN "next_action" "next_action";

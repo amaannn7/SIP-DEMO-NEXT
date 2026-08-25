@@ -1,0 +1,1 @@
+ALTER TABLE "icp_fields" ADD COLUMN "is_enabled" boolean DEFAULT true NOT NULL;
