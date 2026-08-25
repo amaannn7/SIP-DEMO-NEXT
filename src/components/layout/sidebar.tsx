@@ -92,8 +92,12 @@ export function Sidebar({
           sits outside that nav, so without the same `flex justify-center`
           here its size-9 pill stretched to the wrapper's full width instead
           of centering at a fixed 36px like every icon above it, reading as
-          shifted left. */}
-      <div className={cn("flex border-t border-[var(--sidebar-border)] pt-2", collapsed ? "justify-center px-2.5" : "px-3")}>
+          shifted left. Expanded, this wrapper must be flex-col (not row) —
+          a row's single flex child sizes to its own content instead of
+          stretching to fill, which is exactly what made this pill read as
+          shorter/narrower than every SidebarNav row above it (those sit in
+          a flex-col nav, which stretches a row-direction child by default). */}
+      <div className={cn("flex border-t border-[var(--sidebar-border)] pt-2", collapsed ? "justify-center px-2.5" : "flex-col px-3")}>
         <SupportNavLink />
       </div>
 
