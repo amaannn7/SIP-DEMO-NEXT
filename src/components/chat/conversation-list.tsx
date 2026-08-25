@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Hash, Lock, Plus, Wifi, WifiOff } from "lucide-react";
+import { Hash, Lock, Plus, RotateCw, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatShortDate, formatTime } from "@/lib/format-date";
 import { UserAvatar } from "./user-avatar";
@@ -55,9 +55,19 @@ export function ConversationList({
               <>
                 <Wifi className="size-3 text-success" /> Live
               </>
-            ) : (
+            ) : process.env.NEXT_PUBLIC_CHAT_WS_URL ? (
+              // A URL IS configured but the socket isn't open — this is a
+              // real dropped/retrying connection, distinct from the no-URL
+              // case below (a deployment that deliberately runs on polling
+              // alone, e.g. Vercel, where there's no chat-ws process to
+              // connect to at all — "Reconnecting" there would be a
+              // permanent, misleading error state for expected behavior).
               <>
                 <WifiOff className="size-3" /> {wsStatus === "connecting" ? "Connecting…" : "Reconnecting…"}
+              </>
+            ) : (
+              <>
+                <RotateCw className="size-3" /> Updates every few seconds
               </>
             )}
           </p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Bell, Flame, PhoneCall, PhoneMissed, Snowflake, Search as SearchIcon, AtSign, ClipboardCheck, LifeBuoy, X } from "lucide-react";
@@ -37,6 +37,18 @@ const POLL_INTERVAL_MS = 10_000;
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Click-outside (the overlay div below) already closes the dropdown;
+  // Escape is the other standard way users expect to dismiss a popover and
+  // had no handler at all.
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   const { data } = useQuery({
     queryKey: ["notifications"],

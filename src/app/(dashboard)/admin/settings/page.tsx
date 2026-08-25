@@ -28,7 +28,7 @@ import { AircallSettingsCard } from "./aircall-settings-card";
  * here, matching the source system, not nested under the dashboard.
  */
 export default async function SettingsPage() {
-  const session = await requireRoleForPage("admin");
+  const session = await requireRoleForPage("super_admin");
 
   const [fields, thresholds, brandContext, preferredProvider, apiKeys, dailyTargets, aircallSettings] = await Promise.all([
     listIcpFieldRows(session.user.orgId),

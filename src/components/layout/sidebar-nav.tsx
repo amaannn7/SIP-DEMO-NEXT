@@ -47,7 +47,7 @@ const MANAGER_NAV_ITEMS = [
   { href: "/leads", label: "Pipeline", icon: GitBranch, superAdminOnly: false },
   { href: "/workbench", label: "Workbench", icon: LayoutGrid, superAdminOnly: false },
   { href: "/dashboard", label: "Team Activity", icon: Activity, superAdminOnly: false },
-  { href: "/admin/users", label: "Users", icon: ShieldCheck, superAdminOnly: true },
+  { href: "/admin/users", label: "Users", icon: ShieldCheck, superAdminOnly: false },
   { href: "/admin/settings", label: "Settings", icon: Settings, superAdminOnly: true },
 ];
 

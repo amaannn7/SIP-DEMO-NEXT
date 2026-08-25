@@ -4,6 +4,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { jobRuns, callLogs } from "@/lib/db/schema";
 import { getStartedBoss, QUEUE_NAMES } from "./queue";
+import { handleEnrichLead } from "./handlers/enrich-lead";
+import { handleGenerateEmail } from "./handlers/generate-email";
+import { handleGenerateCallPitch } from "./handlers/generate-call-pitch";
 import type { EmailSequenceStep } from "@/lib/ai/prompts/email";
 import type { CallPitchType } from "@/lib/ai/prompts/call-pitch";
 
@@ -27,10 +30,38 @@ async function createJobRun(params: {
   return row.id;
 }
 
+// enrich_lead/generate_email/generate_call_pitch run inline, awaited, right
+// here — not handed to pg-boss for a background worker to pick up. Each is
+// a single LLM call (a few seconds), well within a Vercel serverless
+// function's timeout, and Vercel can't run pg-boss's persistent worker
+// process at all — there's no separate worker to hand these off to in that
+// environment. The job_runs row + status columns stay exactly as they were
+// (the client still enqueues then polls /api/jobs/[jobRunId]), so nothing
+// about the calling code or the UI needs to change; this only changes WHO
+// does the work, from a separate process to the Server Action itself.
+// score_call/reconcile_transcripts stay on the real queue — they're
+// webhook/cron-triggered, not a user waiting on a button click, and
+// reconcile_transcripts in particular is inherently a recurring sweep.
+
+// Each handler already sets job_runs.status = "failed" (with .error) in its
+// own catch block before re-throwing — that re-throw exists for pg-boss's
+// benefit (it uses a thrown error to mark a queue job failed/retryable),
+// which no longer applies once called directly. Swallowing it here keeps
+// this function's contract exactly what every caller already relies on
+// ("always resolves to a jobRunId; check the job_runs row for the outcome"),
+// instead of an unhandled rejection surfacing as a generic Next.js error
+// boundary on the client for what the UI already has a clean path to show.
+async function runInline(work: () => Promise<void>): Promise<void> {
+  try {
+    await work();
+  } catch (err) {
+    console.error("[jobs] inline handler failed (already recorded on job_runs):", err);
+  }
+}
+
 export async function enqueueEnrichLead(params: { orgId: string; leadId: string; actorId: string }): Promise<string> {
   const jobRunId = await createJobRun({ ...params, type: "enrich_lead", input: {} });
-  const boss = await getStartedBoss();
-  await boss.send(QUEUE_NAMES.enrichLead, { jobRunId, orgId: params.orgId, leadId: params.leadId });
+  await runInline(() => handleEnrichLead({ jobRunId, orgId: params.orgId, leadId: params.leadId }));
   return jobRunId;
 }
 
@@ -47,16 +78,17 @@ export async function enqueueGenerateEmail(params: {
     type: "generate_email",
     input: { sequenceStep: params.sequenceStep, customInstructions: params.customInstructions, includeSignature: params.includeSignature },
   });
-  const boss = await getStartedBoss();
-  await boss.send(QUEUE_NAMES.generateEmail, {
-    jobRunId,
-    orgId: params.orgId,
-    leadId: params.leadId,
-    actorId: params.actorId,
-    sequenceStep: params.sequenceStep,
-    customInstructions: params.customInstructions,
-    includeSignature: params.includeSignature,
-  });
+  await runInline(() =>
+    handleGenerateEmail({
+      jobRunId,
+      orgId: params.orgId,
+      leadId: params.leadId,
+      actorId: params.actorId,
+      sequenceStep: params.sequenceStep,
+      customInstructions: params.customInstructions,
+      includeSignature: params.includeSignature,
+    }),
+  );
   return jobRunId;
 }
 
@@ -72,14 +104,15 @@ export async function enqueueGenerateCallPitch(params: {
     type: "generate_call_pitch",
     input: { pitchType: params.pitchType, customInstructions: params.customInstructions },
   });
-  const boss = await getStartedBoss();
-  await boss.send(QUEUE_NAMES.generateCallPitch, {
-    jobRunId,
-    orgId: params.orgId,
-    leadId: params.leadId,
-    pitchType: params.pitchType,
-    customInstructions: params.customInstructions,
-  });
+  await runInline(() =>
+    handleGenerateCallPitch({
+      jobRunId,
+      orgId: params.orgId,
+      leadId: params.leadId,
+      pitchType: params.pitchType,
+      customInstructions: params.customInstructions,
+    }),
+  );
   return jobRunId;
 }
 

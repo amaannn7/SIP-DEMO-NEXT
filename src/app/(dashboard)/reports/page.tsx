@@ -16,7 +16,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ range?: string; from?: string; to?: string; repId?: string; outcome?: string }>;
 }) {
-  const session = await requireRoleForPage("admin");
+  const session = await requireRoleForPage("super_admin");
   const params = await searchParams;
 
   const preset = VALID_PRESETS.includes(params.range as ReportRangePreset) ? (params.range as ReportRangePreset) : "today";

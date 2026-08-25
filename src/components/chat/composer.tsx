@@ -223,13 +223,26 @@ export function Composer({
     if (pickedFile) formData.set("attachment", pickedFile);
     if (replyingTo) formData.set("replyToId", replyingTo.id);
     startTransition(async () => {
-      const result = await sendMessageAction({}, formData);
-      if (result.error) {
-        setError(result.error);
+      // sendMessageAction returning {error} was already handled below, but an
+      // unhandled throw (a transient DB/session error rather than a
+      // validation failure) previously propagated out of this async
+      // callback entirely: onSent() never ran, no error ever reached the
+      // user, and the optimistic message stayed on screen with nothing to
+      // reconcile it against — it looked sent but was never actually saved.
+      try {
+        const result = await sendMessageAction({}, formData);
+        if (result.error) {
+          setError(result.error);
+          setValue(body);
+          setFile(pickedFile);
+        }
+      } catch {
+        setError("Message failed to send. Please try again.");
         setValue(body);
         setFile(pickedFile);
+      } finally {
+        await onSent();
       }
-      await onSent();
     });
   }
 
