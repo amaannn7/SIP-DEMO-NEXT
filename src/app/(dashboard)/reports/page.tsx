@@ -16,16 +16,21 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ range?: string; from?: string; to?: string; repId?: string; outcome?: string }>;
 }) {
-  const session = await requireRoleForPage("super_admin");
+  // Legacy source (api.php: activity-report/calls-report/activity-feed) all
+  // gate this to requireAdmin(), not requireSuperAdmin() — a plain admin
+  // sees the same report, just with other super_admins' rows excluded
+  // (viewerIsSuperAdmin below), matching the same tier boundary as Settings.
+  const session = await requireRoleForPage("admin");
   const params = await searchParams;
+  const viewerIsSuperAdmin = session.user.role === "super_admin";
 
   const preset = VALID_PRESETS.includes(params.range as ReportRangePreset) ? (params.range as ReportRangePreset) : "today";
   const range = resolveReportRange(preset, params.from, params.to);
 
   const [repActivity, calls, timeline, orgUsers] = await Promise.all([
-    getRepActivityReport(session.user.orgId, range),
-    getCallsReport(session.user.orgId, range, { repId: params.repId, outcome: params.outcome }),
-    getActivityTimeline(session.user.orgId, range),
+    getRepActivityReport(session.user.orgId, range, viewerIsSuperAdmin),
+    getCallsReport(session.user.orgId, range, { repId: params.repId, outcome: params.outcome }, viewerIsSuperAdmin),
+    getActivityTimeline(session.user.orgId, range, viewerIsSuperAdmin),
     listOrgUsers(session.user.orgId),
   ]);
 

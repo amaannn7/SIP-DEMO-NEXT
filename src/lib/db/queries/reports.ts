@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, leads, emailHistory, enrichmentResults, callLogs, leadActivity, callOutcomeEnum } from "@/lib/db/schema";
 import type { ReportDateRange } from "@/lib/reports/date-range";
@@ -23,12 +23,23 @@ const QUALIFIED_STAGES = ["consultation_booked", "won"] as const;
  * over in-memory JSON per rep; this aggregates in Postgres instead), then
  * joined by rep in application code since each metric comes from a
  * different table.
+ *
+ * `viewerIsSuperAdmin` ports the legacy source's activity-report/calls-report
+ * split exactly (api.php: "Super admin sees everyone; regular admin sees
+ * non-super-admins only") — a plain admin viewing this report never sees
+ * another super_admin's row, matching the same tier boundary Settings'
+ * Aircall fields already use.
  */
-export async function getRepActivityReport(orgId: string, range: ReportDateRange): Promise<RepActivityRow[]> {
+export async function getRepActivityReport(orgId: string, range: ReportDateRange, viewerIsSuperAdmin: boolean): Promise<RepActivityRow[]> {
   const { from, to } = range;
 
   const [reps, callsRows, emailsRows, researchRows, conversionsRows, leadsCreatedRows, activeDaysRows] = await Promise.all([
-    db.query.users.findMany({ where: eq(users.orgId, orgId), columns: { id: true, displayName: true } }),
+    db.query.users.findMany({
+      where: viewerIsSuperAdmin
+        ? eq(users.orgId, orgId)
+        : and(eq(users.orgId, orgId), ne(users.role, "super_admin")),
+      columns: { id: true, displayName: true },
+    }),
 
     db
       .select({ userId: callLogs.loggedBy, count: sql<number>`count(*)::int` })
@@ -106,11 +117,32 @@ export type CallOutcomeSummary = { outcome: string; count: number };
 
 export type CallsReportFilters = { repId?: string; outcome?: string };
 
-export async function getCallsReport(orgId: string, range: ReportDateRange, filters: CallsReportFilters = {}) {
+export async function getCallsReport(
+  orgId: string,
+  range: ReportDateRange,
+  filters: CallsReportFilters = {},
+  viewerIsSuperAdmin: boolean = true,
+) {
   const { from, to } = range;
   const baseConditions = [eq(callLogs.orgId, orgId), gte(callLogs.createdAt, from), lte(callLogs.createdAt, to)];
   if (filters.repId) baseConditions.push(eq(callLogs.loggedBy, filters.repId));
   if (filters.outcome) baseConditions.push(eq(callLogs.outcome, filters.outcome as (typeof callOutcomeEnum.enumValues)[number]));
+  // Same viewer-tier boundary as getRepActivityReport — a plain admin never
+  // sees a call another super_admin logged.
+  if (!viewerIsSuperAdmin) {
+    const superAdminIds = await db.query.users.findMany({
+      where: and(eq(users.orgId, orgId), eq(users.role, "super_admin")),
+      columns: { id: true },
+    });
+    if (superAdminIds.length > 0) {
+      baseConditions.push(
+        sql`${callLogs.loggedBy} NOT IN (${sql.join(
+          superAdminIds.map((u) => sql`${u.id}`),
+          sql`, `,
+        )})`,
+      );
+    }
+  }
 
   const [rows, outcomeSummary] = await Promise.all([
     db.query.callLogs.findMany({
@@ -140,9 +172,35 @@ export type ActivityTimelineEntry = {
   payload: Record<string, unknown>;
 };
 
-export async function getActivityTimeline(orgId: string, range: ReportDateRange, limit = 100): Promise<ActivityTimelineEntry[]> {
+export async function getActivityTimeline(
+  orgId: string,
+  range: ReportDateRange,
+  viewerIsSuperAdmin: boolean = true,
+  limit = 100,
+): Promise<ActivityTimelineEntry[]> {
+  // Legacy source's activity-feed excludes other super_admins' rows from a
+  // plain admin's view too (same array_filter as activity-report/calls-report).
+  let excludeActorIds: string[] = [];
+  if (!viewerIsSuperAdmin) {
+    const superAdmins = await db.query.users.findMany({
+      where: and(eq(users.orgId, orgId), eq(users.role, "super_admin")),
+      columns: { id: true },
+    });
+    excludeActorIds = superAdmins.map((u) => u.id);
+  }
+
   const rows = await db.query.leadActivity.findMany({
-    where: and(eq(leadActivity.orgId, orgId), gte(leadActivity.createdAt, range.from), lte(leadActivity.createdAt, range.to)),
+    where: and(
+      eq(leadActivity.orgId, orgId),
+      gte(leadActivity.createdAt, range.from),
+      lte(leadActivity.createdAt, range.to),
+      excludeActorIds.length > 0
+        ? sql`(${leadActivity.actorId} IS NULL OR ${leadActivity.actorId} NOT IN (${sql.join(
+            excludeActorIds.map((id) => sql`${id}`),
+            sql`, `,
+          )}))`
+        : undefined,
+    ),
     orderBy: (fields, { desc }) => [desc(fields.createdAt)],
     limit,
     with: {

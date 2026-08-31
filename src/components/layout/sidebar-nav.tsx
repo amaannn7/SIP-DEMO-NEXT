@@ -41,14 +41,21 @@ const REP_NAV_ITEMS = [
 // already have a Settings destination reps don't. It still has no role guard
 // of its own (any authenticated user can reach /my-context directly); this
 // is purely about where the nav entry point lives for each role.
+// Reports and Settings were previously super_admin-only here, but the
+// legacy source (api.php: admin-settings/activity-report/calls-report/
+// activity-feed) gates all of these to requireAdmin(), not
+// requireSuperAdmin() — a plain admin sees the same pages, just with
+// certain content filtered server-side (Aircall in Settings; other
+// super_admins' rows in Reports). See the pages themselves for that
+// filtering.
 const MANAGER_NAV_ITEMS = [
   { href: "/admin", label: "Admin Dashboard", icon: LayoutDashboard, superAdminOnly: false },
-  { href: "/reports", label: "Reports", icon: BarChart3, superAdminOnly: true },
+  { href: "/reports", label: "Reports", icon: BarChart3, superAdminOnly: false },
   { href: "/leads", label: "Pipeline", icon: GitBranch, superAdminOnly: false },
   { href: "/workbench", label: "Workbench", icon: LayoutGrid, superAdminOnly: false },
   { href: "/dashboard", label: "Team Activity", icon: Activity, superAdminOnly: false },
   { href: "/admin/users", label: "Users", icon: ShieldCheck, superAdminOnly: false },
-  { href: "/admin/settings", label: "Settings", icon: Settings, superAdminOnly: true },
+  { href: "/admin/settings", label: "Settings", icon: Settings, superAdminOnly: false },
 ];
 
 const isManager = (role: UserRole) => role === "admin" || role === "super_admin";

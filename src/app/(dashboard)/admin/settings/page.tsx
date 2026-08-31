@@ -28,7 +28,14 @@ import { AircallSettingsCard } from "./aircall-settings-card";
  * here, matching the source system, not nested under the dashboard.
  */
 export default async function SettingsPage() {
-  const session = await requireRoleForPage("super_admin");
+  // Legacy source (api.php, case 'admin-settings') gates this to
+  // requireAdmin(), not requireSuperAdmin() — a plain admin sees the same
+  // page, just with certain fields stripped (Aircall entirely; the reset
+  // org data card is a separate, non-legacy addition also kept
+  // super_admin-only below). Not a super_admin-exclusive page.
+  const session = await requireRoleForPage("admin");
+
+  const isSuperAdmin = session.user.role === "super_admin";
 
   const [fields, thresholds, brandContext, preferredProvider, apiKeys, dailyTargets, aircallSettings] = await Promise.all([
     listIcpFieldRows(session.user.orgId),
@@ -37,7 +44,9 @@ export default async function SettingsPage() {
     getAiProviderPreference(session.user.orgId),
     listMaskedApiKeys(session.user.orgId),
     getOrgDefaultDailyTargets(session.user.orgId),
-    getAircallSettingsView(session.user.orgId),
+    // Only fetched for super_admin — see the AircallSettingsCard render
+    // below for why a plain admin never gets this data at all.
+    isSuperAdmin ? getAircallSettingsView(session.user.orgId) : Promise.resolve(null),
   ]);
 
   const totalWeight = fields.filter((f) => f.isEnabled).reduce((sum, f) => sum + f.weight, 0);
@@ -129,11 +138,17 @@ export default async function SettingsPage() {
           <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
 
-        {/* Aircall is visible to any admin, but only super_admin can actually
-            edit its config (canConfigure) — matches the source system's
-            visibility, everything else below stays super-admin-only. */}
-        <AircallSettingsCard settings={aircallSettings} orgId={session.user.orgId} canConfigure={session.user.role === "super_admin"} />
-        {session.user.role === "super_admin" && <ResetOrgDataCard />}
+        {/* Legacy source strips every aircall_* field from admin-settings'
+            response entirely for a plain admin (api.php: `if (strpos($k,
+            'aircall_') === 0 && empty($reqUser['is_super_admin'])) continue;`)
+            — not shown-but-read-only, not present at all. Aircall touches
+            call recordings/telephony credentials, the same tier as Hub
+            Sync/Real-Time in that source comment, so this card (and the
+            data fetch feeding it, above) is super_admin-only. */}
+        {isSuperAdmin && aircallSettings && (
+          <AircallSettingsCard settings={aircallSettings} orgId={session.user.orgId} canConfigure />
+        )}
+        {isSuperAdmin && <ResetOrgDataCard />}
       </div>
     </>
   );
