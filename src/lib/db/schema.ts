@@ -1022,6 +1022,17 @@ export const notifications = pgTable(
     title: text("title").notNull(),
     body: text("body").notNull(),
     isRead: boolean("is_read").notNull().default(false),
+    // Dismiss ("Clear all" / the per-item X) used to hard-delete the row —
+    // but generateAndSaveNotifications re-derives notifications from live
+    // lead state on every poll, deduped only against dedupeKeys that still
+    // exist in this table. Deleting the row erased that dedupe record too,
+    // so the very next poll saw the underlying condition (still true) as
+    // brand new and recreated the identical notification, unread — a
+    // dismissed alert reappeared looking freshly generated. Soft-dismiss
+    // instead: the row (and its dedupeKey) stays, so regeneration keeps
+    // seeing it as already-handled; listNotifications just filters
+    // dismissed rows out of what's shown.
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

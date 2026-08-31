@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { notifications, leads } from "@/lib/db/schema";
 import { generateNotifications, type NotificationLeadInput } from "@/lib/notifications/generate";
@@ -62,7 +62,7 @@ export async function generateAndSaveNotifications(orgId: string, userId: string
 
 export async function listNotifications(userId: string) {
   return db.query.notifications.findMany({
-    where: eq(notifications.userId, userId),
+    where: and(eq(notifications.userId, userId), isNull(notifications.dismissedAt)),
     orderBy: desc(notifications.createdAt),
     limit: LIST_LIMIT,
   });
@@ -70,7 +70,7 @@ export async function listNotifications(userId: string) {
 
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
   const rows = await db.query.notifications.findMany({
-    where: and(eq(notifications.userId, userId), eq(notifications.isRead, false)),
+    where: and(eq(notifications.userId, userId), eq(notifications.isRead, false), isNull(notifications.dismissedAt)),
     columns: { id: true },
   });
   return rows.length;
@@ -87,12 +87,21 @@ export async function markAllNotificationsRead(userId: string) {
   await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
 }
 
+// Soft-dismiss (not delete): the row — and critically its dedupeKey — stays,
+// so generateAndSaveNotifications' regeneration check still sees this
+// condition as "already notified about" and won't recreate it unread on the
+// next poll. Only listNotifications/getUnreadNotificationCount filter
+// dismissed rows out of what's actually shown. Also marks read, since a
+// dismissed notification is definitionally no longer unread.
 export async function dismissNotification(userId: string, notificationId: string) {
-  await db.delete(notifications).where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId)));
+  await db
+    .update(notifications)
+    .set({ dismissedAt: new Date(), isRead: true })
+    .where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId)));
 }
 
 export async function dismissAllNotifications(userId: string) {
-  await db.delete(notifications).where(eq(notifications.userId, userId));
+  await db.update(notifications).set({ dismissedAt: new Date(), isRead: true }).where(eq(notifications.userId, userId));
 }
 
 /**
