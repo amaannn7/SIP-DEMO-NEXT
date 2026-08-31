@@ -56,7 +56,14 @@ export function NotificationBell() {
       const res = await fetch("/api/notifications");
       return res.json();
     },
-    refetchInterval: POLL_INTERVAL_MS,
+    // Paused while the dropdown is open — a background refetch landing
+    // mid-interaction can re-render the list between a click's mousedown
+    // and mouseup (e.g. if item order shifts), which drops the click
+    // entirely: no click event fires, so nothing after it (the mutation,
+    // the network request) ever runs. No loss of freshness from pausing —
+    // the whole point of polling is keeping the *closed* bell's badge
+    // current; once open, the user is already looking at a snapshot.
+    refetchInterval: open ? false : POLL_INTERVAL_MS,
   });
 
   const items = data?.notifications ?? [];
@@ -64,7 +71,11 @@ export function NotificationBell() {
 
   const postAction = useMutation({
     mutationFn: async (body: { action: string; notificationId?: string }) => {
-      await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      // A failed request (network error, expired session, server error)
+      // previously resolved silently — the click looked like it did
+      // nothing, with no error surfaced anywhere a user could see.
+      if (!res.ok) throw new Error(`Notification action failed (${res.status})`);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
